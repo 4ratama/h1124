@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Himari's Invitation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Noto+Serif+JP:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* Layout idea: one centered column on a deep midnight field, slow gold dust drifting behind. A memory quiz gates the card. Single dark theme. */
+  :root {
+    --bg: #0e0f1a;
+    --bg-glow: #1a1730;
+    --ink: #ece6da;
+    --ink-soft: #a9a3b5;
+    --gold: #c9a96a;
+    --line: rgba(201, 169, 106, 0.35);
+    --display: "Cormorant Garamond", "Noto Serif JP", Georgia, serif;
+    --body: "Noto Serif JP", "Cormorant Garamond", Georgia, serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: radial-gradient(ellipse at 50% 30%, var(--bg-glow) 0%, var(--bg) 70%);
+    color: var(--ink);
+    font-family: var(--body);
+    overflow: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #dust { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  main {
+    position: relative;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    padding: 20px 20px;
+  }
+  .step {
+    display: none;
+    width: min(520px, 100%);
+    text-align: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .step.is-active { display: flex; animation: rise 0.9s ease both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+  .eyebrow {
+    font-family: var(--display);
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    font-size: 0.78rem;
+    color: var(--gold);
+    margin: 0;
+  }
+  .hb {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(1.5rem, 6vw, 2rem);
+    margin: 0;
+    color: var(--ink-soft);
+  }
+  .name {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: clamp(3.6rem, 18vw, 6.2rem);
+    line-height: 1;
+    margin: -6px 0 0;
+    letter-spacing: 0.02em;
+  }
+  .date {
+    font-family: var(--display);
+    letter-spacing: 0.35em;
+    font-size: 1rem;
+    color: var(--gold);
+    margin: 0;
+  }
+  .rule { width: 56px; height: 1px; background: var(--line); border: 0; margin: 10px 0 6px; }
+  .question {
+    font-family: var(--display);
+    font-size: clamp(1.45rem, 5.6vw, 1.9rem);
+    line-height: 1.5;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .question.jp { font-family: var(--body); font-size: clamp(1.1rem, 4.6vw, 1.4rem); line-height: 1.9; letter-spacing: 0.06em; }
+  .actions { display: flex; gap: 16px; justify-content: center; margin-top: 8px; min-height: 52px; }
+  button, a.send {
+    font-family: var(--display);
+    font-size: 1.15rem;
+    letter-spacing: 0.18em;
+    min-width: 112px;
+    height: 52px;
+    padding: 0 26px;
+    border-radius: 999px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.25s, color 0.25s, border-color 0.25s, opacity 0.25s;
+  }
+  button.yes, a.send { background: var(--gold); color: #17141f; border: 1px solid var(--gold); }
+  button.yes:hover, a.send:hover { background: #dcc088; border-color: #dcc088; }
+  a.send { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+  button.no { background: transparent; color: var(--ink-soft); border: 1px solid var(--line); }
+  button.no.is-fleeing { transition: left 0.28s cubic-bezier(.2,.8,.2,1), top 0.28s cubic-bezier(.2,.8,.2,1); z-index: 5; }
+  button.next { background: transparent; color: var(--gold); border: 1px solid var(--line); min-width: 64px; }
+  button.next:hover { border-color: var(--gold); }
+  button:focus-visible, a.send:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+  .reply {
+    font-size: clamp(1.15rem, 4.8vw, 1.4rem);
+    line-height: 1.9;
+    letter-spacing: 0.06em;
+    margin: 0;
+    animation: rise 0.7s ease both;
+  }
+  [hidden] { display: none !important; }
+  #sendWrap { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 6px; animation: rise 0.7s ease both; }
+
+  /* progress dots */
+  .dots { display: flex; gap: 10px; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--gold); transition: background 0.5s, box-shadow 0.5s; }
+  .dots i.on { background: var(--gold); box-shadow: 0 0 10px rgba(201,169,106,0.7); }
+
+  .lock { color: var(--gold); margin-top: 6px; }
+  .note {
+    font-family: var(--body); font-style: normal; letter-spacing: 0.06em;
+    font-size: clamp(1.05rem, 4.4vw, 1.3rem); line-height: 1.9;
+    color: var(--ink-soft); margin: 0; text-wrap: balance;
+  }
+
+  /* quiz */
+  .choices { width: 100%; display: flex; flex-direction: column; gap: 8px; position: relative; }
+  .opt {
+    width: 100%; min-width: 0; height: auto; min-height: 46px;
+    padding: 9px 18px;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    font-family: var(--body); font-size: 1rem; letter-spacing: 0.04em; line-height: 1.6;
+    color: var(--ink);
+    background: rgba(201, 169, 106, 0.06);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .opt:hover { border-color: var(--gold); }
+  .opt .num {
+    display: none; flex: none;
+    width: 24px; height: 24px; line-height: 24px; border-radius: 50%;
+    background: var(--gold); color: #17141f;
+    font-family: var(--display); font-size: 0.95rem; letter-spacing: 0;
+  }
+  .opt.drag { min-height: 42px; padding: 6px 14px; cursor: grab; touch-action: none; position: relative; }
+  .opt.drag .label { flex: 1; text-align: center; }
+  .opt.drag .grip { flex: none; width: 20px; color: var(--gold); font-size: 1.2rem; line-height: 1; }
+  .opt.dragging { z-index: 3; cursor: grabbing; border-color: var(--gold); background: rgba(201, 169, 106, 0.24); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+  .opt:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  button.check { align-self: center; margin-top: 6px; height: 46px; min-width: 96px; }
+  .opt.picked { border-color: var(--gold); background: rgba(201, 169, 106, 0.14); }
+  .opt.picked .num { display: inline-block; }
+  .opt.right { border-color: var(--gold); background: rgba(201, 169, 106, 0.28); }
+  .opt.wrong { opacity: 0.35; pointer-events: none; animation: shake 0.35s; }
+  .choices.shake { animation: shake 0.35s; }
+  @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  .hint { min-height: 1.7em; margin: 0; font-size: 0.95rem; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .hint.ok { color: var(--gold); font-family: var(--display); font-size: 1.3rem; letter-spacing: 0.3em; }
+  .hint.ok.long { font-family: var(--body); font-size: 1.05rem; line-height: 1.9; letter-spacing: 0.06em; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .step.is-active, .reply, #sendWrap { animation: none; }
+    button.no.is-fleeing { transition: none; }
+    .opt.wrong, .choices.shake { animation: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="dust" aria-hidden="true"></canvas>
+<main>
+
+  <!-- Intro -->
+  <section class="step is-active" id="intro">
+    <h1 class="hb">Happy Birthday</h1>
+    <p class="name">Himari</p>
+    <svg class="lock" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="ロック中"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+    <p class="note">これ読みたい？<br>読みたいなら全部正解してね^^</p>
+    <div class="dots"></div>
+    <div class="actions"><button class="yes" id="start" type="button">Start</button></div>
+  </section>
+
+  <!-- Quiz (問題は下の QUIZ で変えられる) -->
+  <section class="step" id="quiz">
+    <p class="eyebrow" id="qno"></p>
+    <p class="question jp" id="qtext"></p>
+    <div class="choices" id="qbody"></div>
+    <p class="hint" id="qhint"></p>
+    <div class="dots"></div>
+  </section>
+
+  <!-- Unlock -->
+  <section class="step" id="open">
+    <svg class="lock" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="ロック解除"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 7.5-2"></path></svg>
+    <p class="eyebrow">ロック解除</p>
+    <p class="question jp">招待状が届いています。</p>
+    <div class="dots"></div>
+    <div class="actions"><button class="yes" id="openBtn" type="button">Open</button></div>
+  </section>
+
+  <!-- Invitation page 1 -->
+  <section class="step" id="step1">
+    <p class="eyebrow">ご招待</p>
+    <h1 class="hb">Happy Birthday</h1>
+    <p class="name">Himari</p>
+    <p class="date">2026.11.24</p>
+    <hr class="rule">
+    <p class="question">Will you go on a date with me?</p>
+    <div class="actions">
+      <button class="yes" id="yes1" type="button">Yes</button>
+      <button class="no" id="no1" type="button">No</button>
+    </div>
+  </section>
+
+  <!-- Invitation page 2 -->
+  <section class="step" id="step2">
+    <p class="eyebrow">つづき</p>
+    <p class="question jp">それで何するか、<br>知りたい？</p>
+    <div class="actions" id="actions2">
+      <button class="yes" id="yes2" type="button">Yes</button>
+      <button class="no" id="no2" type="button">No</button>
+    </div>
+    <p class="reply" id="reply2" role="status" hidden></p>
+    <div class="actions" id="next2" hidden>
+      <button class="next" id="goto3" type="button" aria-label="次へ">→</button>
+    </div>
+  </section>
+
+  <!-- Invitation page 3 -->
+  <section class="step" id="step3">
+    <p class="eyebrow">もうひとつ</p>
+    <p class="question jp" id="finalQ"></p>
+    <div class="actions" id="actions3">
+      <button class="yes" id="yes3" type="button">Yes</button>
+      <button class="no" id="no3" type="button">No</button>
+    </div>
+    <p class="reply" id="reply3" role="status" hidden></p>
+    <div id="sendWrap" hidden>
+      <p class="hint">最後に、結果をLINEで送ってね。</p>
+      <a class="send" id="send" href="#" target="_blank" rel="noopener">Envoyer</a>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  // ===== ここを書き換えれば中身を変えられる =====
+  // type 'order'  : items を「正しい順」に書く（画面ではシャッフルされる）。2〜6個
+  // type 'choice' : options の中で answer が正解の番号（0始まり）。2〜4個
+  // win           : 正解したときに Correct の代わりに出す一言（省略可）
+  // once / lose   : 間違えても再回答なしでそのまま先へ進む。lose は間違えたときに出す一言（省略可）
+  const QUIZ = [
+    { type: 'order',  q: '二人で行った場所を、<br>行った順に並び替えてみて',
+      items: ['アサイー', '祇園祭', '天神祭', '東山観月路', 'サマソニ', '淀川花火大会'] },
+    { type: 'choice', q: '俺が最初にひまりを気になり始めたのは、いつでしょう？',
+      options: ['新歓で最初に会ったとき', 'みんなでご飯で王将に行ったとき', 'ごぼうチョコをくれたとき', '練習後にLINEしてたとき'], answer: 3 },
+    { type: 'choice', q: '最後の問題。明日、どこに行くでしょう？',
+      options: ['梅田', '京橋', 'ひまりの家', '心斎橋'], answer: 3,
+      win: 'すごいね。正解。明日は行ったことないところに行ってみよ。',
+      once: true, lose: '答えは、明日のお楽しみ。' }
+  ];
+  const FINAL_QUESTION = "明日、少しだけいつもより<br>長く一緒にいてもいい？";
+  const FINAL_THANKS   = "それじゃあ、<br>明日楽しみにしてるね。";
+  // ============================================
+
+  const $ = (id) => document.getElementById(id);
+  const stepEls = Array.from(document.querySelectorAll('.step'));
+  $('finalQ').innerHTML = FINAL_QUESTION;
+  document.querySelectorAll('.dots').forEach((d) => {
+    d.innerHTML = QUIZ.map(() => '<i></i>').join('');
+  });
+
+  // 結果（最後にフランス語のメッセージにして、LINEの共有画面に渡す）
+  let log = { q: [], no1: 0, no3: 0, a2: '' };
+  function resetLog() {
+    log = { q: QUIZ.map(() => ({ fails: 0, bad: [] })), no1: 0, no3: 0, a2: '' };
+  }
+  resetLog();
+
+  function frenchReport() {
+    const L = ['Salut ! Voici mon rapport de jeu.'];
+    QUIZ.forEach((d, i) => {
+      const r = log.q[i];
+      let s = 'Q' + (i + 1) + ' : ' + (r.fails === 0 ? 'du premier coup' : r.fails + ' erreur' + (r.fails > 1 ? 's' : ''));
+      if (r.bad.length) s += ' (' + r.bad.join(' / ') + ')';
+      L.push(s);
+    });
+    L.push('Bouton "Non" de l\'invitation : essayé ' + log.no1 + ' fois');
+    L.push('"Tu veux savoir ce qu\'on va faire ?" : ' + (log.a2 === 'yes' ? 'oui' : 'non'));
+    L.push('Dernière question, bouton "Non" : essayé ' + log.no3 + ' fois, puis oui');
+    L.push('Joyeux anniversaire à moi. À demain !');
+    return L.join('\n');
+  }
+
+  function show(id) {
+    stepEls.forEach((s) => s.classList.toggle('is-active', s.id === id));
+    if (id === 'quiz') renderQ();
+  }
+  function setProgress(n) {
+    document.querySelectorAll('.dots').forEach((d) => {
+      Array.from(d.children).forEach((c, k) => c.classList.toggle('on', k < n));
+    });
+  }
+
+  /* ---------- 思い出クイズ ---------- */
+  let qi = 0, locked = false;
+
+  function shuffled(arr) {
+    const idx = arr.map((_, i) => i);
+    let out;
+    do {
+      out = idx.slice().sort(() => Math.random() - 0.5);
+    } while (arr.length > 1 && out.every((v, i) => v === i));
+    return out;
+  }
+
+  function correct() {
+    locked = true;
+    const d = QUIZ[qi];
+    $('qhint').textContent = d.win || '正解';
+    $('qhint').classList.add('ok');
+    if (d.win) $('qhint').classList.add('long');
+    advance(d.win ? 3200 : 1300);
+  }
+
+  function advance(ms) {
+    setProgress(qi + 1);
+    setTimeout(() => {
+      qi++;
+      if (qi < QUIZ.length) renderQ(); else show('open');
+    }, ms);
+  }
+
+  function renderQ() {
+    const d = QUIZ[qi];
+    const body = $('qbody');
+    locked = false;
+    $('qno').textContent = '第' + (qi + 1) + '問 / 全' + QUIZ.length + '問';
+    $('qtext').innerHTML = d.q;
+    $('qhint').textContent = '';
+    $('qhint').classList.remove('ok', 'long');
+    body.innerHTML = '';
+    body.classList.remove('shake');
+
+    if (d.type === 'choice') {
+      d.options.forEach((text, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'opt';
+        b.textContent = text;
+        b.addEventListener('click', () => {
+          if (locked) return;
+          if (i === d.answer) { b.classList.add('right'); correct(); }
+          else {
+            b.classList.add('wrong');
+            log.q[qi].fails++;
+            log.q[qi].bad.push(text);
+            if (d.once) {
+              locked = true;
+              $('qhint').textContent = d.lose;
+              advance(2600);
+            } else {
+              $('qhint').textContent = 'おしい。もう一回。';
+            }
+          }
+        });
+        body.appendChild(b);
+      });
+    } else {
+      shuffled(d.items).forEach((origIdx) => {
+        const row = document.createElement('div');
+        row.className = 'opt drag';
+        row.tabIndex = 0;
+        row.dataset.i = origIdx;
+        row.innerHTML = '<span class="grip" aria-hidden="true">\u2261</span><span class="label"></span><span class="grip" aria-hidden="true"></span>';
+        row.querySelector('.label').textContent = d.items[origIdx];
+        attachDrag(row, body);
+        body.appendChild(row);
+      });
+      const check = document.createElement('button');
+      check.type = 'button';
+      check.className = 'yes check';
+      check.textContent = 'OK';
+      check.addEventListener('click', () => {
+        if (locked) return;
+        const cur = Array.from(body.querySelectorAll('.drag')).map((r) => Number(r.dataset.i));
+        if (cur.every((v, k) => v === k)) {
+          correct();
+        } else {
+          locked = true;
+          log.q[qi].fails++;
+          $('qhint').textContent = 'おしい。もう一回。';
+          body.classList.add('shake');
+          setTimeout(() => { body.classList.remove('shake'); locked = false; }, 900);
+        }
+      });
+      body.appendChild(check);
+      $('qhint').textContent = '上から、行った順にドラッグして並べてね';
+    }
+  }
+
+  // ドラッグで並び替え（マウスもタッチも）。矢印キーでも動かせる
+  function attachDrag(row, body) {
+    let startY = 0, active = false;
+    function place(e) { row.style.transform = 'translateY(' + (e.clientY - startY) + 'px)'; }
+    function swap(moveSibling, e) {
+      const t0 = row.offsetTop;
+      moveSibling();
+      startY += row.offsetTop - t0;
+      place(e);
+    }
+    function move(e) {
+      if (!active) return;
+      place(e);
+      const r = row.getBoundingClientRect(), c = r.top + r.height / 2;
+      const prev = row.previousElementSibling, next = row.nextElementSibling;
+      if (next && next.classList.contains('drag')) {
+        const nr = next.getBoundingClientRect();
+        if (c > nr.top + nr.height / 2) { swap(() => body.insertBefore(next, row), e); return; }
+      }
+      if (prev && prev.classList.contains('drag')) {
+        const pr = prev.getBoundingClientRect();
+        if (c < pr.top + pr.height / 2) { swap(() => body.insertBefore(prev, row.nextSibling), e); }
+      }
+    }
+    function end() {
+      active = false;
+      row.style.transform = '';
+      row.classList.remove('dragging');
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+    }
+    row.addEventListener('pointerdown', (e) => {
+      if (locked || e.button > 0) return;
+      e.preventDefault();
+      active = true;
+      startY = e.clientY;
+      row.classList.add('dragging');
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', end);
+      window.addEventListener('pointercancel', end);
+    });
+    row.addEventListener('keydown', (e) => {
+      if (locked) return;
+      const prev = row.previousElementSibling, next = row.nextElementSibling;
+      if (e.key === 'ArrowUp' && prev && prev.classList.contains('drag')) {
+        e.preventDefault(); body.insertBefore(row, prev); row.focus();
+      } else if (e.key === 'ArrowDown' && next && next.classList.contains('drag')) {
+        e.preventDefault(); body.insertBefore(next, row);
+      }
+    });
+  }
+
+  $('start').addEventListener('click', () => { qi = 0; resetLog(); setProgress(0); show('quiz'); });
+  $('openBtn').addEventListener('click', () => show('step1'));
+
+  /* ---------- 招待状: Noが逃げ回る ---------- */
+  function makeRunaway(btn, avoidBtn, onTry) {
+    let started = false;
+    const PAD = 16;
+
+    function start() {
+      const r = btn.getBoundingClientRect();
+      const spacer = document.createElement('span');
+      spacer.style.cssText = 'display:inline-block;width:' + r.width + 'px;height:' + r.height + 'px;';
+      btn.parentNode.insertBefore(spacer, btn);
+      btn.classList.add('is-fleeing');
+      btn.style.position = 'fixed';
+      btn.style.margin = '0';
+      btn.style.left = r.left + 'px';
+      btn.style.top = r.top + 'px';
+      started = true;
+    }
+    function overlaps(x, y, w, h, rect, margin) {
+      return x < rect.right + margin && x + w > rect.left - margin &&
+             y < rect.bottom + margin && y + h > rect.top - margin;
+    }
+    function flee() {
+      if (!started) start();
+      const w = btn.offsetWidth, h = btn.offsetHeight;
+      const maxX = window.innerWidth - w - PAD;
+      const maxY = window.innerHeight - h - PAD;
+      const cur = btn.getBoundingClientRect();
+      const yesRect = avoidBtn.getBoundingClientRect();
+      let x = cur.left, y = cur.top;
+      for (let i = 0; i < 40; i++) {
+        const nx = PAD + Math.random() * Math.max(0, maxX - PAD);
+        const ny = PAD + Math.random() * Math.max(0, maxY - PAD);
+        const far = Math.hypot(nx - cur.left, ny - cur.top) > 140;
+        if (far && !overlaps(nx, ny, w, h, yesRect, 20)) { x = nx; y = ny; break; }
+      }
+      btn.style.left = x + 'px';
+      btn.style.top = y + 'px';
+    }
+
+    btn.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') flee(); });
+    btn.addEventListener('pointerdown', (e) => { e.preventDefault(); if (onTry) onTry(); flee(); });
+    btn.addEventListener('focus', flee);
+    btn.addEventListener('click', (e) => { e.preventDefault(); flee(); });
+    document.addEventListener('pointermove', (e) => {
+      if (!started || e.pointerType !== 'mouse') return;
+      const r = btn.getBoundingClientRect();
+      const d = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+      if (d < 90) flee();
+    });
+    window.addEventListener('resize', () => {
+      if (!started) return;
+      const r = btn.getBoundingClientRect();
+      btn.style.left = Math.min(r.left, window.innerWidth - r.width - PAD) + 'px';
+      btn.style.top = Math.min(r.top, window.innerHeight - r.height - PAD) + 'px';
+    });
+  }
+
+  // Invitation page 1
+  makeRunaway($('no1'), $('yes1'), () => { log.no1++; });
+  $('yes1').addEventListener('click', () => show('step2'));
+
+  // Invitation page 2
+  function answer2(text, a) {
+    log.a2 = a;
+    $('actions2').hidden = true;
+    $('reply2').innerHTML = text;
+    $('reply2').hidden = false;
+    $('next2').hidden = false;
+    $('goto3').focus({ preventScroll: true });
+  }
+  $('yes2').addEventListener('click', () => answer2('内緒🤫', 'yes'));
+  $('no2').addEventListener('click', () => answer2('いいね。<br>その心意気素敵だよ。', 'no'));
+  $('goto3').addEventListener('click', () => show('step3'));
+
+  // Invitation page 3
+  makeRunaway($('no3'), $('yes3'), () => { log.no3++; });
+  $('yes3').addEventListener('click', () => {
+    $('actions3').hidden = true;
+    $('reply3').innerHTML = FINAL_THANKS;
+    $('reply3').hidden = false;
+    $('send').href = 'https://line.me/R/msg/text/?' + encodeURIComponent(frenchReport());
+    $('sendWrap').hidden = false;
+  });
+
+  /* ---------- 背景の金色の粒 ---------- */
+  (function dust() {
+    const c = $('dust'), ctx = c.getContext('2d');
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let W, H, dots;
+    function size() {
+      const dpr = window.devicePixelRatio || 1;
+      W = window.innerWidth; H = window.innerHeight;
+      c.width = W * dpr; c.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      dots = Array.from({ length: Math.round(W * H / 14000) + 24 }, () => ({
+        x: Math.random() * W, y: Math.random() * H,
+        r: Math.random() * 1.3 + 0.3,
+        vy: -(Math.random() * 0.12 + 0.03),
+        vx: (Math.random() - 0.5) * 0.04,
+        a: Math.random() * 0.5 + 0.15,
+        p: Math.random() * Math.PI * 2
+      }));
+    }
+    function draw(t) {
+      ctx.clearRect(0, 0, W, H);
+      for (const d of dots) {
+        d.x += d.vx; d.y += d.vy;
+        if (d.y < -4) { d.y = H + 4; d.x = Math.random() * W; }
+        const tw = reduce ? 1 : 0.6 + 0.4 * Math.sin(t / 1800 + d.p);
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(201,169,106,' + (d.a * tw).toFixed(3) + ')';
+        ctx.fill();
+      }
+      if (!reduce) requestAnimationFrame(draw);
+    }
+    size();
+    window.addEventListener('resize', () => { size(); if (reduce) draw(0); });
+    draw(0);
+    if (!reduce) requestAnimationFrame(draw);
+  })();
+</script>
+</body>
+</html>
